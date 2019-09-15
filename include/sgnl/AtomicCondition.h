@@ -47,7 +47,7 @@ public:
         return;
   }
 
-  void notify_all()
+  void notify_all() noexcept
   {
     this->condvar_.notify_all();
   }
