@@ -7,7 +7,6 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
-#include <stdexcept>
 
 
 namespace sgnl {
@@ -22,9 +21,6 @@ public:
   , condvar_mutex_()
   , condvar_()
   {
-    // requirement of std::signal
-    if( !this->value_.is_lock_free() )
-      throw std::runtime_error("atomic<ValueType> is not lock-free");
   }
 
   ValueType get() const
