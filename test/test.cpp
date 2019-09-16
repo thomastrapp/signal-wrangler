@@ -46,6 +46,45 @@ TEST_CASE("condition-get-set")
   REQUIRE( condition.get() == 42 );
 }
 
+TEST_CASE("wait-for-value")
+{
+  sgnl::AtomicCondition<int> condition(23);
+  std::future<void> future =
+    std::async(
+        std::launch::async,
+        [&] { condition.wait_for(std::chrono::hours(1000), 42); });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::yield();
+
+  condition.set(42);
+  condition.notify_one();
+  future.get();
+
+  REQUIRE( condition.get() == 42 );
+}
+
+TEST_CASE("wait-for-predicate")
+{
+  sgnl::AtomicCondition<int> condition(23);
+  std::future<void> future =
+    std::async(
+        std::launch::async,
+        [&] {
+          auto pred = [&]() { return condition.get() == 42; };
+          condition.wait_for(std::chrono::hours(1000), pred);
+        });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::yield();
+
+  condition.set(42);
+  condition.notify_one();
+  future.get();
+
+  REQUIRE( condition.get() == 42 );
+}
+
 TEST_CASE("constructor-thread-blocks-signals")
 {
   sgnl::AtomicCondition<bool> condition(false);
