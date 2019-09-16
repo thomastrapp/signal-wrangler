@@ -44,6 +44,22 @@ public:
         return;
   }
 
+  template<class Rep, class Period, class Predicate>
+  void wait_for(const std::chrono::duration<Rep, Period>& time,
+                Predicate pred) const
+  {
+    std::unique_lock<std::mutex> lock(this->condvar_mutex_);
+
+    while( !pred() )
+      if( this->condvar_.wait_for(lock, time) == std::cv_status::timeout )
+        return;
+  }
+
+  void notify_one() noexcept
+  {
+    this->condvar_.notify_one();
+  }
+
   void notify_all() noexcept
   {
     this->condvar_.notify_all();
