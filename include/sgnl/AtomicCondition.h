@@ -33,11 +33,12 @@ public:
     this->value_.store(val);
   }
 
-  void wait_for(const std::chrono::milliseconds& time, ValueType val) const
+  template<class Rep, class Period>
+  void wait_for(const std::chrono::duration<Rep, Period>& time,
+                ValueType val) const
   {
     std::unique_lock<std::mutex> lock(this->condvar_mutex_);
 
-    // This while-loop takes care of "spurious wakeups"
     while( this->value_.load() != val )
       if( this->condvar_.wait_for(lock, time) == std::cv_status::timeout )
         return;
