@@ -2,6 +2,17 @@ Signal handler for multithreaded C++ applications on Linux
 ==========================================================
 
 
+## Build & Install
+
+```
+mkdir -p build/ && cd build/
+cmake ..
+make
+make test
+make install
+```
+
+
 Example usage:
 ```
 bool worker(sgnl::AtomicCondition<bool>& exit_condition)
