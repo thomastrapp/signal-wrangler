@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <future>
+#include <map>
 #include <vector>
 
 
@@ -159,6 +160,33 @@ TEST_CASE("exit-condition-looping")
 
     int signal = ft_sig_handler.get();
     REQUIRE( signal == test_signal );
+  }
+}
+
+TEST_CASE("signal-handler-reuse")
+{
+  std::map<int, int> signal_map({{SIGINT, 1 << 0},
+                                 {SIGTERM, 1 << 1},
+                                 {SIGUSR1, 1 << 2},
+                                 {SIGUSR2, 1 << 3}});
+
+  sgnl::AtomicCondition<int> condition(0);
+  sgnl::SignalHandler signal_handler(signal_map, condition);
+
+  for( auto p : signal_map )
+  {
+    std::promise<pthread_t> signal_handler_thread_id;
+    std::future<int> ft_sig_handler =
+      std::async(std::launch::async, [&]() {
+        signal_handler_thread_id.set_value(pthread_self());
+        return signal_handler();
+      });
+    REQUIRE(
+        pthread_kill(
+          signal_handler_thread_id.get_future().get(),
+          p.first) == 0 );
+    REQUIRE( ft_sig_handler.get() == p.first );
+    REQUIRE( condition.get() == p.second );
   }
 }
 
