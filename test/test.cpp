@@ -18,7 +18,7 @@ namespace {
 
 bool worker(sgnl::AtomicCondition<bool>& exit_condition)
 {
-  exit_condition.wait_for(std::chrono::milliseconds(1000), true);
+  exit_condition.wait_for(std::chrono::hours(1000), true);
   return exit_condition.get();
 }
 
