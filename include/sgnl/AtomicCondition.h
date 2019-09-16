@@ -23,12 +23,12 @@ public:
   {
   }
 
-  ValueType get() const
+  ValueType get() const noexcept
   {
     return this->value_.load();
   }
 
-  void set(ValueType val)
+  void set(ValueType val) noexcept
   {
     this->value_.store(val);
   }
