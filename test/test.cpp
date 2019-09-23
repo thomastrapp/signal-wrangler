@@ -58,7 +58,6 @@ TEST_CASE("wait-for-value")
   std::this_thread::yield();
 
   condition.set(42);
-  condition.notify_one();
   future.get();
 
   REQUIRE( condition.get() == 42 );
@@ -79,7 +78,6 @@ TEST_CASE("wait-for-predicate")
   std::this_thread::yield();
 
   condition.set(42);
-  condition.notify_one();
   future.get();
 
   REQUIRE( condition.get() == 42 );

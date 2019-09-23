@@ -58,7 +58,6 @@ public:
           it != this->signal_map_.end() )
       {
         this->condition_.set(it->second);
-        this->condition_.notify_all();
         return it->first;
       }
     }

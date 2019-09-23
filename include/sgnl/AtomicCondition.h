@@ -18,7 +18,7 @@ class AtomicCondition
 public:
   explicit AtomicCondition(ValueType val)
   : value_(val)
-  , condvar_mutex_()
+  , mutex_()
   , condvar_()
   {
   }
@@ -30,14 +30,23 @@ public:
 
   void set(ValueType val) noexcept
   {
-    this->value_.store(val);
+    {
+      // This ensures that wait_for is either
+      // 1. not running, or
+      // 2. in a waiting state
+      // to avoid a data race between value_.load and cond_var.wait_for.
+      std::unique_lock<std::mutex> lock(this->mutex_);
+      this->value_.store(val);
+    }
+
+    this->condvar_.notify_all();
   }
 
   template<class Rep, class Period>
   void wait_for(const std::chrono::duration<Rep, Period>& time,
                 ValueType val) const
   {
-    std::unique_lock<std::mutex> lock(this->condvar_mutex_);
+    std::unique_lock<std::mutex> lock(this->mutex_);
 
     while( this->value_.load() != val )
       if( this->condvar_.wait_for(lock, time) == std::cv_status::timeout )
@@ -48,26 +57,16 @@ public:
   void wait_for(const std::chrono::duration<Rep, Period>& time,
                 Predicate pred) const
   {
-    std::unique_lock<std::mutex> lock(this->condvar_mutex_);
+    std::unique_lock<std::mutex> lock(this->mutex_);
 
     while( !pred() )
       if( this->condvar_.wait_for(lock, time) == std::cv_status::timeout )
         return;
   }
 
-  void notify_one() noexcept
-  {
-    this->condvar_.notify_one();
-  }
-
-  void notify_all() noexcept
-  {
-    this->condvar_.notify_all();
-  }
-
 private:
   std::atomic<ValueType> value_;
-  mutable std::mutex condvar_mutex_;
+  mutable std::mutex mutex_;
   mutable std::condition_variable condvar_;
 };
 
