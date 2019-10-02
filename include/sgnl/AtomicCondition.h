@@ -42,7 +42,7 @@ public:
     this->condvar_.notify_all();
   }
 
-  template<class Rep, class Period>
+  template<typename Rep, typename Period>
   void wait_for(const std::chrono::duration<Rep, Period>& time,
                 ValueType val) const
   {
@@ -53,7 +53,7 @@ public:
         return;
   }
 
-  template<class Rep, class Period, class Predicate>
+  template<typename Rep, typename Period, typename Predicate>
   void wait_for(const std::chrono::duration<Rep, Period>& time,
                 Predicate pred) const
   {
