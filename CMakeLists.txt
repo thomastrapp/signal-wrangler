@@ -30,7 +30,8 @@ include(GNUInstallDirs)
 install(TARGETS sgnl
         EXPORT SgnlTargets)
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/sgnl"
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILES_MATCHING PATTERN "*.h")
 install(FILES "${PROJECT_SOURCE_DIR}/cmake/SgnlConfig.cmake"
               "${CMAKE_CURRENT_BINARY_DIR}/SgnlConfigVersion.cmake"
         DESTINATION lib/cmake/sgnl)
