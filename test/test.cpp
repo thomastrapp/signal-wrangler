@@ -3,31 +3,36 @@
 
 #include <catch2/catch.hpp>
 
+#include <sgnl/AtomicCondition.h>
 #include <sgnl/SignalHandler.h>
 
-#include <pthread.h>
+#include <signal.h>
+#include <sys/types.h>
 
 #include <chrono>
 #include <future>
-#include <map>
 #include <vector>
 
 
 namespace {
 
 
-bool worker(sgnl::AtomicCondition<bool>& exit_condition)
+bool Worker(const sgnl::AtomicCondition<bool>& exit_condition)
 {
-  exit_condition.wait_for(std::chrono::hours(1000), true);
+  exit_condition.wait_for(
+      std::chrono::hours(1000),
+      [&exit_condition](){ return exit_condition.get() == true; });
   return exit_condition.get();
 }
 
-int looping_worker(sgnl::AtomicCondition<bool>& exit_condition)
+int LoopingWorker(const sgnl::AtomicCondition<bool>& exit_condition)
 {
   int i = 0;
   while( exit_condition.get() == false )
   {
-    exit_condition.wait_for(std::chrono::milliseconds(2), true);
+    exit_condition.wait_for(
+        std::chrono::milliseconds(2),
+        [&exit_condition](){ return exit_condition.get() == true; });
     ++i;
   }
 
@@ -46,184 +51,209 @@ TEST_CASE("condition-get-set")
   REQUIRE( condition.get() == 42 );
 }
 
-TEST_CASE("wait-for-value")
+TEST_CASE("wait")
 {
-  sgnl::AtomicCondition<int> condition(23);
-  std::future<void> future =
+  sgnl::AtomicCondition condition(false);
+  std::future<bool> future =
     std::async(
         std::launch::async,
-        [&] { condition.wait_for(std::chrono::hours(1000), 42); });
+        [&condition](){ condition.wait(); return true; });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   std::this_thread::yield();
 
-  condition.set(42);
-  future.get();
+  condition.notify_one();
+  REQUIRE( future.get() == true );
+}
 
-  REQUIRE( condition.get() == 42 );
+TEST_CASE("wait-pred")
+{
+  sgnl::AtomicCondition condition(false);
+  std::future<bool> future =
+    std::async(
+        std::launch::async,
+        [&condition](){ condition.wait([](){ return true; }); return true; });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::yield();
+
+  condition.notify_one();
+  REQUIRE( future.get() == true );
 }
 
 TEST_CASE("wait-for-predicate")
 {
-  sgnl::AtomicCondition<int> condition(23);
+  sgnl::AtomicCondition condition(23);
+  auto pred = [&condition](){ return condition.get() == 42; };
   std::future<void> future =
     std::async(
         std::launch::async,
-        [&] {
-          auto pred = [&]() { return condition.get() == 42; };
-          condition.wait_for(std::chrono::hours(1000), pred);
-        });
+        [&condition, &pred](){
+          condition.wait_for(std::chrono::hours(1000), pred); });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   std::this_thread::yield();
 
   condition.set(42);
-  future.get();
+  condition.notify_all();
+  future.wait();
 
   REQUIRE( condition.get() == 42 );
 }
 
-TEST_CASE("constructor-thread-blocks-signals")
+TEST_CASE("wait-until-predicate")
 {
-  sgnl::AtomicCondition<bool> condition(false);
-
-  sgnl::SignalHandler signal_handler({{SIGTERM, true}, {SIGINT, true}}, condition);
-
-  std::promise<pthread_t> signal_handler_thread_id;
-  std::future<int> ft_sig_handler =
-    std::async(std::launch::async, [&]() {
-      signal_handler_thread_id.set_value(pthread_self());
-      return signal_handler();
-    });
+  sgnl::AtomicCondition condition(23);
+  auto pred = [&condition](){ return condition.get() == 42; };
+  std::future<void> future =
+    std::async(
+        std::launch::async,
+        [&condition, &pred](){
+          condition.wait_until(
+              std::chrono::system_clock::now() + std::chrono::hours(1),
+              pred); });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   std::this_thread::yield();
 
-  // send terminate signal to main thread ..
-  REQUIRE( pthread_kill(pthread_self(), SIGTERM) == 0 );
+  condition.set(42);
+  condition.notify_all();
+  future.wait();
 
-  // .. but we're still running
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  std::this_thread::yield();
-
-  // send interrupt signal to signal handler thread
-  REQUIRE(
-      pthread_kill(
-        signal_handler_thread_id.get_future().get(),
-        SIGINT) == 0 );
-
-  CHECK( ft_sig_handler.get() == SIGINT );
-  CHECK( condition.get() == true );
-
-  CHECK( signal_handler() == SIGTERM );
+  REQUIRE( condition.get() == 42 );
 }
 
-TEST_CASE("exit-condition")
+TEST_CASE("sigwait")
 {
-  std::vector<int> signals({SIGINT, SIGTERM, SIGUSR1, SIGUSR2});
+  sgnl::SignalHandler signal_handler({SIGUSR1});
+  kill(0, SIGUSR1);
+  REQUIRE( signal_handler.sigwait() == SIGUSR1 );
+}
+
+TEST_CASE("sigwait_handler")
+{
+  auto handler = [](int){
+    return true;
+  };
+  sgnl::SignalHandler signal_handler({SIGUSR2});
+  kill(0, SIGUSR2);
+  REQUIRE( signal_handler.sigwait_handler(handler) == SIGUSR2 );
+}
+
+TEST_CASE("constructor-thread-blocks-signals")
+{
+  std::atomic last_signal(0);
+  sgnl::SignalHandler signal_handler({SIGTERM, SIGINT});
+
+  auto handler = [&last_signal](int signum) {
+    last_signal.store(signum);
+    return signum == SIGINT;
+  };
+
+  std::future<int> ft_sig_handler =
+    std::async(
+        std::launch::async,
+        &sgnl::SignalHandler::sigwait_handler,
+        &signal_handler,
+        std::ref(handler));
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::yield();
+
+  REQUIRE( kill(0, SIGTERM) == 0 );
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::yield();
+  CHECK( last_signal.load() == SIGTERM );
+
+  REQUIRE( kill(0, SIGINT) == 0 );
+
+  REQUIRE( ft_sig_handler.get() == SIGINT );
+  REQUIRE( last_signal.load() == SIGINT );
+}
+
+TEST_CASE("sleeping-workers-with-exit-condition")
+{
+  sgnl::AtomicCondition exit_condition(false);
+  std::initializer_list signals({SIGINT, SIGTERM, SIGUSR1, SIGUSR2});
   for( auto test_signal : signals )
   {
-    sgnl::AtomicCondition exit_condition(false);
+    exit_condition.set(false);
+    auto handler = [&exit_condition, test_signal](int signum) {
+      exit_condition.set(true);
+      exit_condition.notify_all();
+      return test_signal == signum;
+    };
 
-    sgnl::SignalHandler signal_handler({{test_signal, true}}, exit_condition);
-    std::promise<pthread_t> signal_handler_thread_id;
+    sgnl::SignalHandler signal_handler({test_signal});
     std::future<int> ft_sig_handler =
-      std::async(std::launch::async, [&]() {
-        signal_handler_thread_id.set_value(pthread_self());
-        return signal_handler();
-      });
+      std::async(
+          std::launch::async,
+          &sgnl::SignalHandler::sigwait_handler,
+          &signal_handler,
+          std::ref(handler));
 
     std::vector<std::future<bool>> futures;
     for(int i = 0; i < 50; ++i)
       futures.push_back(
           std::async(
             std::launch::async,
-            &worker,
+            Worker,
             std::ref(exit_condition)));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     std::this_thread::yield();
 
-    REQUIRE(
-        pthread_kill(
-          signal_handler_thread_id.get_future().get(),
-          test_signal) == 0 );
+    REQUIRE( kill(0, test_signal) == 0 );
 
     for(auto& future : futures)
       REQUIRE(future.get() == true);
 
-    int signal = ft_sig_handler.get();
-    REQUIRE( signal == test_signal );
+    REQUIRE( ft_sig_handler.get() == test_signal );
   }
 }
 
-TEST_CASE("exit-condition-looping")
+TEST_CASE("looping-workers-with-exit-condition")
 {
-  std::vector<int> signals({SIGINT, SIGTERM, SIGUSR1, SIGUSR2});
+  std::atomic last_signal(0);
+  sgnl::AtomicCondition exit_condition(false);
+  std::initializer_list signals({SIGINT, SIGTERM, SIGUSR1, SIGUSR2});
   for( auto test_signal : signals )
   {
-    sgnl::AtomicCondition exit_condition(false);
+    exit_condition.set(false);
+    auto handler = [&exit_condition, test_signal](int signum) {
+      exit_condition.set(true);
+      exit_condition.notify_all();
+      return test_signal == signum;
+    };
 
-    sgnl::SignalHandler signal_handler({{test_signal, true}}, exit_condition);
-    std::promise<pthread_t> signal_handler_thread_id;
+    sgnl::SignalHandler signal_handler({test_signal});
     std::future<int> ft_sig_handler =
-      std::async(std::launch::async, [&]() {
-        signal_handler_thread_id.set_value(pthread_self());
-        return signal_handler();
-      });
+      std::async(
+          std::launch::async,
+          &sgnl::SignalHandler::sigwait_handler,
+          &signal_handler,
+          std::ref(handler));
 
     std::vector<std::future<int>> futures;
     for(int i = 0; i < 10; ++i)
       futures.push_back(
           std::async(
             std::launch::async,
-            &looping_worker,
+            LoopingWorker,
             std::ref(exit_condition)));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     std::this_thread::yield();
 
-    REQUIRE(
-        pthread_kill(
-          signal_handler_thread_id.get_future().get(),
-          test_signal) == 0 );
+    REQUIRE( kill(0, test_signal) == 0 );
 
     for(auto& future : futures)
       // After 100 milliseconds, each worker thread should
       // have looped at least 10 times.
-      // This might break if system is under heavy load
-      // or really slow.
-      REQUIRE(future.get() > 10);
+      REQUIRE( future.get() > 10 );
 
-    int signal = ft_sig_handler.get();
-    REQUIRE( signal == test_signal );
-  }
-}
-
-TEST_CASE("signal-handler-reuse")
-{
-  std::map<int, int> signal_map({{SIGINT, 1 << 0},
-                                 {SIGTERM, 1 << 1},
-                                 {SIGUSR1, 1 << 2},
-                                 {SIGUSR2, 1 << 3}});
-
-  sgnl::AtomicCondition<int> condition(0);
-  sgnl::SignalHandler signal_handler(signal_map, condition);
-
-  for( auto p : signal_map )
-  {
-    std::promise<pthread_t> signal_handler_thread_id;
-    std::future<int> ft_sig_handler =
-      std::async(std::launch::async, [&]() {
-        signal_handler_thread_id.set_value(pthread_self());
-        return signal_handler();
-      });
-    REQUIRE(
-        pthread_kill(
-          signal_handler_thread_id.get_future().get(),
-          p.first) == 0 );
-    REQUIRE( ft_sig_handler.get() == p.first );
-    REQUIRE( condition.get() == p.second );
+    REQUIRE( ft_sig_handler.get() == test_signal );
   }
 }
 

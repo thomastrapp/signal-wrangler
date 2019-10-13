@@ -3,13 +3,12 @@
 
 #pragma once
 
-#include <sgnl/AtomicCondition.h>
-
 #include <csignal>
 #include <cstring>
-#include <map>
+#include <functional>
+#include <initializer_list>
 #include <stdexcept>
-#include <utility>
+#include <string>
 
 
 namespace sgnl {
@@ -21,21 +20,26 @@ class SignalHandlerException : public std::runtime_error
 };
 
 
-template<typename ValueType>
+/// When constructed, SignalHandler blocks the given `signals` in the calling
+/// thread.
+///
+/// Signals can be polled by calling `SignalHandler::sigwait()` or
+/// `SignalHandler::sigwait_handler(handler)`.
+/// `handler` is a callable that accepts a signal number as its first and only
+/// argument. `handler` returns false if the waiting should be continued.
+///
+/// When destructed, SignalHandler unblocks the `signals`.
 class SignalHandler
 {
 public:
-  SignalHandler(std::map<int, ValueType> signal_map,
-                AtomicCondition<ValueType>& condition)
-  : signal_map_(std::move(signal_map))
-  , set_()
-  , condition_(condition)
+  explicit SignalHandler(const std::initializer_list<int>& signals)
+  : set_()
   {
     if( sigemptyset(&this->set_) != 0 )
       throw SignalHandlerException("sigemptyset error");
 
-    for( const auto& p : this->signal_map_ )
-      if( sigaddset(&this->set_, p.first) != 0 )
+    for( int signum : signals )
+      if( sigaddset(&this->set_, signum) != 0 )
         throw SignalHandlerException("sigaddset error");
 
     int s = pthread_sigmask(SIG_BLOCK, &this->set_, nullptr);
@@ -44,29 +48,38 @@ public:
           std::string("pthread_sigmask: ") + std::strerror(s));
   }
 
-  int operator()()
+  ~SignalHandler()
+  {
+    pthread_sigmask(SIG_UNBLOCK, &this->set_, nullptr);
+  }
+
+  SignalHandler(const SignalHandler& other) = delete;
+  SignalHandler(SignalHandler&& other) = delete;
+  SignalHandler& operator=(const SignalHandler& other) = delete;
+  SignalHandler& operator=(SignalHandler&& other) = delete;
+
+  int sigwait()
+  {
+    int signum = 0;
+    int ret = ::sigwait(&this->set_, &signum);
+    if( ret != 0 )
+      throw SignalHandlerException(
+          std::string("sigwait: ") + std::strerror(ret));
+    return signum;
+  }
+
+  int sigwait_handler(std::function<bool (int)> handler)
   {
     while( true )
     {
-      int signum = 0;
-      int ret = sigwait(&this->set_, &signum);
-      if( ret != 0 )
-        throw SignalHandlerException(
-            std::string("sigwait: ") + std::strerror(ret));
-
-      if( auto it = this->signal_map_.find(signum);
-          it != this->signal_map_.end() )
-      {
-        this->condition_.set(it->second);
-        return it->first;
-      }
+      int signum = this->sigwait();
+      if( handler(signum) )
+        return signum;
     }
   }
 
 private:
-  std::map<int, ValueType> signal_map_;
   sigset_t set_;
-  AtomicCondition<ValueType>& condition_;
 };
 
 

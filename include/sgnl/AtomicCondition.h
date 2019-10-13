@@ -7,17 +7,22 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <utility>
 
 
 namespace sgnl {
 
 
+/// Paires a `std::condition_variable` with a `std::atomic<ValueType>`,
+/// protected by a mutex.
+/// The interface of `std::condition_variable` is preserved through "perfect
+/// forwarding".
 template<typename ValueType>
 class AtomicCondition
 {
 public:
-  explicit AtomicCondition(ValueType val)
-  : value_(val)
+  explicit AtomicCondition(ValueType initial_value)
+  : value_(initial_value)
   , mutex_()
   , condvar_()
   {
@@ -30,38 +35,36 @@ public:
 
   void set(ValueType val) noexcept
   {
-    {
-      // This ensures that wait_for is either
-      // 1. not running, or
-      // 2. in a waiting state
-      // to avoid a data race between value_.load and cond_var.wait_for.
-      std::unique_lock<std::mutex> lock(this->mutex_);
-      this->value_.store(val);
-    }
-
-    this->condvar_.notify_all();
+    // This lock is required to avoid a data race between calls to
+    // `AtomicCondition::get` when called in `AtomicCondition::wait_*` through
+    // a predicate.
+    std::unique_lock lock(this->mutex_);
+    this->value_.store(val);
   }
 
-  template<typename Rep, typename Period>
-  void wait_for(const std::chrono::duration<Rep, Period>& time,
-                ValueType val) const
-  {
-    std::unique_lock<std::mutex> lock(this->mutex_);
+  auto native_handle() { return this->condvar_.native_handle(); }
+  void notify_one() const noexcept { this->condvar_.notify_one(); }
+  void notify_all() const noexcept { this->condvar_.notify_all(); }
 
-    while( this->value_.load() != val )
-      if( this->condvar_.wait_for(lock, time) == std::cv_status::timeout )
-        return;
+  template<typename... Args>
+  auto wait(Args&&... args) const
+  {
+    std::unique_lock lock(this->mutex_);
+    return this->condvar_.wait(lock, std::forward<Args>(args)...);
   }
 
-  template<typename Rep, typename Period, typename Predicate>
-  void wait_for(const std::chrono::duration<Rep, Period>& time,
-                Predicate pred) const
+  template<typename... Args>
+  auto wait_for(Args&&... args) const
   {
-    std::unique_lock<std::mutex> lock(this->mutex_);
+    std::unique_lock lock(this->mutex_);
+    return this->condvar_.wait_for(lock, std::forward<Args>(args)...);
+  }
 
-    while( !pred() )
-      if( this->condvar_.wait_for(lock, time) == std::cv_status::timeout )
-        return;
+  template<typename... Args>
+  auto wait_until(Args&&... args) const
+  {
+    std::unique_lock lock(this->mutex_);
+    return this->condvar_.wait_until(lock, std::forward<Args>(args)...);
   }
 
 private:
