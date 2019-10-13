@@ -40,6 +40,5 @@ install(EXPORT SgnlTargets
         NAMESPACE sgnl::
         DESTINATION lib/cmake/sgnl)
 
-enable_testing()
 add_subdirectory("test")
 
