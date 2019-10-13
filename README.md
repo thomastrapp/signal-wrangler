@@ -11,6 +11,7 @@ Signal handler that uses [pthread_sigmask](http://man7.org/linux/man-pages/man3/
 * linux
 * pthread
 * cmake (recommended, but optional)
+* Catch2 for testing
 
 
 ## Example usage
