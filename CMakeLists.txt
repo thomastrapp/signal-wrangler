@@ -42,3 +42,6 @@ install(EXPORT SgnlTargets
 
 add_subdirectory("test")
 
+add_executable(example EXCLUDE_FROM_ALL "example/example.cpp")
+target_link_libraries(example sgnl::sgnl)
+

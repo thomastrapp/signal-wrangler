@@ -36,6 +36,7 @@ Signal handler that uses [pthread_sigmask](http://man7.org/linux/man-pages/man3/
   int last_signal = signal_handler.sigwait_handler(handler);
 } // signals are unblocked again
 ```
+See [example.cpp](example/example.cpp) for an example using threads.
 
 
 ## Build & Install
@@ -45,6 +46,8 @@ mkdir -p build/ && cd build/
 cmake ..
 # build and run tests
 make sgnl-test && ./test/sgnl-test
+# build and run example
+make example && ./example
 # install headers and CMake config
 make install
 ```
