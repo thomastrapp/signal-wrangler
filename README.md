@@ -19,7 +19,7 @@ Signal handler that uses [pthread_sigmask](http://man7.org/linux/man-pages/man3/
 ```
 {
   // Block signals
-  sgnl::SignalHandler signal_handler({SIGINT, SIGINT});
+  sgnl::SignalHandler signal_handler({SIGINT, SIGTERM});
 
   // Wait for a signal
   int signal_number = signal_handler.sigwait();
