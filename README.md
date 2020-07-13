@@ -16,7 +16,7 @@ Signal handler that uses [pthread_sigmask](http://man7.org/linux/man-pages/man3/
 
 ## Example usage
 
-```
+```C++
 {
   // Block signals
   sgnl::SignalHandler signal_handler({SIGINT, SIGTERM});
@@ -42,7 +42,7 @@ See [example.cpp](example/example.cpp) for an example using threads.
 
 ## Build & Install
 
-```
+```SH
 mkdir -p build/ && cd build/
 cmake ..
 # build and run tests
