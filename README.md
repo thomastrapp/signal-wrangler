@@ -1,5 +1,5 @@
-Signal handler for multithreaded C++ applications on Linux
-==========================================================
+Signal handler for multi threaded C++ applications on Linux
+===========================================================
 
 Signal handler that uses [pthread_sigmask](http://man7.org/linux/man-pages/man3/pthread_sigmask.3.html) and [sigwait](http://man7.org/linux/man-pages/man3/sigwait.3.html).
 
