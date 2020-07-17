@@ -163,6 +163,37 @@ TEST_CASE("sigwait_handler")
   REQUIRE( signal_handler.sigwait_handler(handler) == SIGUSR2 );
 }
 
+TEST_CASE("async_sigwait_handler")
+{
+  sgnl::SignalHandler signal_handler({SIGUSR1,SIGUSR2});
+
+  auto handler = [](int){
+    return true;
+  };
+
+  auto future = signal_handler.async_sigwait_handler(handler);
+  kill(0, SIGUSR1);
+  REQUIRE( future.get() == SIGUSR1 );
+}
+
+TEST_CASE("async_sigwait_handler-condition")
+{
+  sgnl::SignalHandler signal_handler({SIGUSR1});
+  sgnl::AtomicCondition<int> condition(0);
+  REQUIRE( condition.get() == 0 );
+  REQUIRE( condition.get() != SIGUSR1 );
+
+  auto handler = [&condition](int signum){
+    condition.set_and_notify_one(signum);
+    return true;
+  };
+
+  auto future = signal_handler.async_sigwait_handler(handler);
+  kill(0, SIGUSR1);
+  REQUIRE( future.get() == SIGUSR1 );
+  REQUIRE( condition.get() == SIGUSR1 );
+}
+
 TEST_CASE("constructor-thread-blocks-signals")
 {
   std::atomic last_signal(0);

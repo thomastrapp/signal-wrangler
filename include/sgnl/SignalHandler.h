@@ -6,9 +6,11 @@
 #include <csignal>
 #include <cstring>
 #include <functional>
+#include <future>
 #include <initializer_list>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 
 namespace sgnl {
@@ -76,6 +78,15 @@ public:
       if( handler(signum) )
         return signum;
     }
+  }
+
+  auto async_sigwait_handler(std::function<bool (int)> handler) const
+  {
+    return std::async(
+        std::launch::async,
+        &SignalHandler::sigwait_handler,
+        this,
+        std::move(handler));
   }
 
 private:
