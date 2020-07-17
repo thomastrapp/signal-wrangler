@@ -58,7 +58,7 @@ public:
   SignalHandler& operator=(const SignalHandler& other) = delete;
   SignalHandler& operator=(SignalHandler&& other) = delete;
 
-  int sigwait()
+  int sigwait() const
   {
     int signum = 0;
     int ret = ::sigwait(&this->set_, &signum);
@@ -68,7 +68,7 @@ public:
     return signum;
   }
 
-  int sigwait_handler(std::function<bool (int)> handler)
+  int sigwait_handler(std::function<bool (int)> handler) const
   {
     while( true )
     {
