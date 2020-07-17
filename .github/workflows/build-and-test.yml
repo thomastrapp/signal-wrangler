@@ -3,6 +3,8 @@ jobs:
   build:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
+    env:
+      CXX: g++
     steps:
     - uses: actions/checkout@v2
     - uses: actions/checkout@v2
@@ -16,22 +18,28 @@ jobs:
         && cd build
         && cmake -DCMAKE_BUILD_TYPE=Release -DCATCH_BUILD_TESTING=Off ..
         && sudo make install
-    - name: Build, Test, Install
-      shell: bash
-      env:
-        CXX: g++
+    - name: Info
+      run: cmake --version && $CXX --version && uname -a
+    - name: Build
       run: >
         mkdir -p build
         && cd build
-        && cmake --version
-        && $CXX --version
         && cmake ..
         && make
-        && make sgnl-test
-        && ./test/sgnl-test
+    - name: Build Test
+      run: cd build && make sgnl-test
+    - name: Run Test
+      run: ./build/test/sgnl-test
+    - name: Build example
+      run: >
+        cd build
         && make example
-        && ./example
-        && sudo make install
-        && cd ../example
+    - name: Run example
+      run: ./build/example
+    - name: Install signal-wrangler
+      runs: cd build && sudo make install
+    - name: Test install
+      runs: >
+        cd example
         && $CXX -std=c++17 -Wall -pthread -o example example.cpp
         && ./example
