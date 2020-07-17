@@ -2,22 +2,16 @@
 #include <sgnl/SignalHandler.h>
 
 #include <cstdlib>
-#include <future>
 #include <iostream>
-#include <thread>
 
 
 void Worker(const sgnl::AtomicCondition<bool>& exit_condition)
 {
-  auto predicate = [&exit_condition]() {
-    return exit_condition.get();
-  };
-  while( true )
+  while( !exit_condition.get() )
   {
-    exit_condition.wait_for(std::chrono::minutes(1), predicate);
-    if( exit_condition.get() )
-      return;
     /* ... do work ... */
+
+    exit_condition.wait_for_value(true, std::chrono::minutes(1));
   }
 }
 
@@ -25,13 +19,13 @@ int main()
 {
   sgnl::AtomicCondition<bool> exit_condition(false);
 
-  auto handler = [&exit_condition](int signum) {
+  auto my_handler = [&exit_condition](int signum) {
     std::cout << "received signal " << signum << "\n";
     if( signum == SIGTERM || signum == SIGINT )
     {
-      exit_condition.set(true);
-      // wakeup all waiting threads
-      exit_condition.notify_all();
+      // set atomic<bool> and wakeup all waiting threads
+      exit_condition.set_and_notify_all(true);
+
       // stop polling for signals
       return true;
     }
@@ -45,11 +39,9 @@ int main()
   sgnl::SignalHandler signal_handler({SIGINT, SIGTERM, SIGUSR1});
 
   std::future<int> ft_sig_handler =
-    std::async(
-        std::launch::async,
-        &sgnl::SignalHandler::sigwait_handler,
-        &signal_handler,
-        std::ref(handler));
+    // Spawn a thread that handles the
+    // signals {SIGINT, SIGTERM, SIGUSR1}
+    signal_handler.async_sigwait_handler(my_handler);
 
   std::vector<std::future<void>> futures;
   for(int i = 0; i < 10; ++i)
