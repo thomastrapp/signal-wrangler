@@ -1,0 +1,25 @@
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build, Test, Install
+      shell: bash
+      env:
+        CXX: g++
+      run: >
+        mkdir build
+        && cd build
+        && cmake --version
+        && $CXX --version
+        && cmake ..
+        && make
+        && make sgnl-test
+        && ./test/sgnl-test
+        && make example
+        && ./example
+        && sudo make install
+        && cd ../example
+        && $CXX -std=c++17 -Wall -pthread -o example example.cpp
+        && ./example
