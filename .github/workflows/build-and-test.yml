@@ -37,9 +37,9 @@ jobs:
     - name: Run example
       run: ./build/example
     - name: Install signal-wrangler
-      runs: cd build && sudo make install
+      run: cd build && sudo make install
     - name: Test install
-      runs: >
+      run: >
         cd example
         && $CXX -std=c++17 -Wall -pthread -o example example.cpp
         && ./example
