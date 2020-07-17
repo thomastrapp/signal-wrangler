@@ -48,7 +48,7 @@ public:
           std::string("pthread_sigmask: ") + std::strerror(s));
   }
 
-  ~SignalHandler()
+  ~SignalHandler() noexcept
   {
     pthread_sigmask(SIG_UNBLOCK, &this->set_, nullptr);
   }
