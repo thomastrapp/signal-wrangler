@@ -9,7 +9,7 @@ jobs:
       env:
         CXX: g++
       run: >
-        mkdir build
+        mkdir -p build
         && cd build
         && cmake --version
         && $CXX --version
