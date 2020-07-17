@@ -4,6 +4,17 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        repository: catchorg/Catch2
+        path: catch
+    - name: Install catch
+      working-directory: catch
+      run: >
+        mkdir build
+        && cd build
+        && cmake -DCMAKE_BUILD_TYPE=Release -DCATCH_BUILD_TESTING=Off ..
+        && sudo make install
     - name: Build, Test, Install
       shell: bash
       env:
