@@ -85,6 +85,23 @@ TEST_CASE("wait-pred")
   REQUIRE( future.get() == true );
 }
 
+TEST_CASE("wait-value")
+{
+  sgnl::AtomicCondition condition(0);
+  std::future<int> future =
+    std::async(
+        std::launch::async,
+        [&condition](){ condition.wait_value(23); return condition.get(); });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::yield();
+
+  condition.notify_all();
+  condition.set_and_notify_one(23);
+
+  REQUIRE( future.get() == 23 );
+}
+
 TEST_CASE("wait-for-predicate")
 {
   sgnl::AtomicCondition condition(23);
@@ -100,6 +117,24 @@ TEST_CASE("wait-for-predicate")
 
   condition.set(42);
   condition.notify_all();
+  future.wait();
+
+  REQUIRE( condition.get() == 42 );
+}
+
+TEST_CASE("wait-for-value")
+{
+  sgnl::AtomicCondition condition(23);
+  std::future<void> future =
+    std::async(
+        std::launch::async,
+        [&condition](){
+          condition.wait_for_value(42, std::chrono::hours(1000)); });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::yield();
+
+  condition.set_and_notify_all(42);
   future.wait();
 
   REQUIRE( condition.get() == 42 );
@@ -143,6 +178,30 @@ TEST_CASE("wait-until-predicate")
   condition.notify_all();
   future.wait();
 
+  REQUIRE( condition.get() == 42 );
+}
+
+TEST_CASE("wait-until-value")
+{
+  sgnl::AtomicCondition condition(23);
+  std::future<int> future =
+    std::async(
+        std::launch::async,
+        [&condition](){
+          condition.wait_until_value(
+              42,
+              std::chrono::system_clock::now() + std::chrono::hours(1));
+          return condition.get();
+        });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::yield();
+
+  condition.notify_all();
+  condition.set(42);
+  condition.notify_all();
+
+  REQUIRE( future.get() == 42 );
   REQUIRE( condition.get() == 42 );
 }
 

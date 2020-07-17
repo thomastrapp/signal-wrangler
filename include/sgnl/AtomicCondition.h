@@ -66,6 +66,18 @@ public:
   }
 
   template<typename... Args>
+  auto wait_value(ValueType value, Args&&... args) const
+  {
+    std::unique_lock lock(this->mutex_);
+    return this->condvar_.wait(
+        lock,
+        std::forward<Args>(args)...,
+        [this, &value](){
+          return this->value_.load() == value;
+        });
+  }
+
+  template<typename... Args>
   auto wait_for(Args&&... args) const
   {
     std::unique_lock lock(this->mutex_);
@@ -73,10 +85,34 @@ public:
   }
 
   template<typename... Args>
+  auto wait_for_value(ValueType value, Args&&... args) const
+  {
+    std::unique_lock lock(this->mutex_);
+    return this->condvar_.wait_for(
+        lock,
+        std::forward<Args>(args)...,
+        [this, &value](){
+          return this->value_.load() == value;
+        });
+  }
+
+  template<typename... Args>
   auto wait_until(Args&&... args) const
   {
     std::unique_lock lock(this->mutex_);
     return this->condvar_.wait_until(lock, std::forward<Args>(args)...);
+  }
+
+  template<typename... Args>
+  auto wait_until_value(ValueType value, Args&&... args) const
+  {
+    std::unique_lock lock(this->mutex_);
+    return this->condvar_.wait_until(
+        lock,
+        std::forward<Args>(args)...,
+        [this, &value](){
+          return this->value_.load() == value;
+        });
   }
 
 private:
