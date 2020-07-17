@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
-project(signal-handler-test)
+project(signal-wrangler-test)
 
 include(EnableWarnings)
 include(DefaultBuildRelease)
