@@ -42,6 +42,18 @@ public:
     this->value_.store(val);
   }
 
+  void set_and_notify_one(ValueType val) noexcept
+  {
+    this->set(std::move(val));
+    this->condvar_.notify_one();
+  }
+
+  void set_and_notify_all(ValueType val) noexcept
+  {
+    this->set(std::move(val));
+    this->condvar_.notify_all();
+  }
+
   auto native_handle() { return this->condvar_.native_handle(); }
   void notify_one() const noexcept { this->condvar_.notify_one(); }
   void notify_all() const noexcept { this->condvar_.notify_all(); }

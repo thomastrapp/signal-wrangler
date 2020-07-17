@@ -49,6 +49,10 @@ TEST_CASE("condition-get-set")
   REQUIRE( condition.get() == 23 );
   condition.set(42);
   REQUIRE( condition.get() == 42 );
+  condition.set_and_notify_all(1);
+  REQUIRE( condition.get() == 1 );
+  condition.set_and_notify_one(2);
+  REQUIRE( condition.get() == 2 );
 }
 
 TEST_CASE("wait")
@@ -96,6 +100,25 @@ TEST_CASE("wait-for-predicate")
 
   condition.set(42);
   condition.notify_all();
+  future.wait();
+
+  REQUIRE( condition.get() == 42 );
+}
+
+TEST_CASE("wait-for-predicate-simple")
+{
+  sgnl::AtomicCondition condition(23);
+  auto pred = [&condition](){ return condition.get() == 42; };
+  std::future<void> future =
+    std::async(
+        std::launch::async,
+        [&condition, &pred](){
+          condition.wait_for(std::chrono::hours(1000), pred); });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::yield();
+
+  condition.set_and_notify_all(42);
   future.wait();
 
   REQUIRE( condition.get() == 42 );
