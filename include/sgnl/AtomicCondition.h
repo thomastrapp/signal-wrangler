@@ -122,5 +122,9 @@ private:
 };
 
 
+template<typename ValueType>
+AtomicCondition(ValueType) -> AtomicCondition<ValueType>;
+
+
 } // namespace sgnl
 
