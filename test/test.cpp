@@ -378,3 +378,8 @@ TEST_CASE("looping-workers-with-exit-condition")
   }
 }
 
+TEST_CASE("signal-handler-throws")
+{
+  REQUIRE_THROWS_AS( sgnl::SignalHandler({-1}) , sgnl::SignalHandlerException );
+}
+
