@@ -38,7 +38,7 @@ public:
     // This lock is required to avoid a data race between calls to
     // `AtomicCondition::get` when called in `AtomicCondition::wait_*` through
     // a predicate.
-    std::unique_lock lock(this->mutex_);
+    std::unique_lock<std::mutex> lock(this->mutex_);
     this->value_.store(val);
   }
 
@@ -61,14 +61,14 @@ public:
   template<typename... Args>
   auto wait(Args&&... args) const
   {
-    std::unique_lock lock(this->mutex_);
+    std::unique_lock<std::mutex> lock(this->mutex_);
     return this->condvar_.wait(lock, std::forward<Args>(args)...);
   }
 
   template<typename... Args>
   auto wait_value(ValueType value, Args&&... args) const
   {
-    std::unique_lock lock(this->mutex_);
+    std::unique_lock<std::mutex> lock(this->mutex_);
     return this->condvar_.wait(
         lock,
         std::forward<Args>(args)...,
@@ -80,14 +80,14 @@ public:
   template<typename... Args>
   auto wait_for(Args&&... args) const
   {
-    std::unique_lock lock(this->mutex_);
+    std::unique_lock<std::mutex> lock(this->mutex_);
     return this->condvar_.wait_for(lock, std::forward<Args>(args)...);
   }
 
   template<typename... Args>
   auto wait_for_value(ValueType value, Args&&... args) const
   {
-    std::unique_lock lock(this->mutex_);
+    std::unique_lock<std::mutex> lock(this->mutex_);
     return this->condvar_.wait_for(
         lock,
         std::forward<Args>(args)...,
@@ -99,14 +99,14 @@ public:
   template<typename... Args>
   auto wait_until(Args&&... args) const
   {
-    std::unique_lock lock(this->mutex_);
+    std::unique_lock<std::mutex> lock(this->mutex_);
     return this->condvar_.wait_until(lock, std::forward<Args>(args)...);
   }
 
   template<typename... Args>
   auto wait_until_value(ValueType value, Args&&... args) const
   {
-    std::unique_lock lock(this->mutex_);
+    std::unique_lock<std::mutex> lock(this->mutex_);
     return this->condvar_.wait_until(
         lock,
         std::forward<Args>(args)...,

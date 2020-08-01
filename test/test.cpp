@@ -264,7 +264,7 @@ TEST_CASE("async_sigwait_handler-condition")
 
 TEST_CASE("constructor-thread-blocks-signals")
 {
-  std::atomic last_signal(0);
+  std::atomic<int> last_signal(0);
   sgnl::SignalHandler signal_handler({SIGTERM, SIGINT});
 
   auto handler = [&last_signal](int signum) {
@@ -297,7 +297,7 @@ TEST_CASE("constructor-thread-blocks-signals")
 TEST_CASE("sleeping-workers-with-exit-condition")
 {
   sgnl::AtomicCondition exit_condition(false);
-  std::initializer_list signals({SIGINT, SIGTERM, SIGUSR1, SIGUSR2});
+  std::initializer_list<int> signals = {SIGINT, SIGTERM, SIGUSR1, SIGUSR2};
   for( auto test_signal : signals )
   {
     exit_condition.set(false);
@@ -338,7 +338,7 @@ TEST_CASE("sleeping-workers-with-exit-condition")
 TEST_CASE("looping-workers-with-exit-condition")
 {
   sgnl::AtomicCondition exit_condition(false);
-  std::initializer_list signals({SIGINT, SIGTERM, SIGUSR1, SIGUSR2});
+  std::initializer_list<int> signals = {SIGINT, SIGTERM, SIGUSR1, SIGUSR2};
   for( auto test_signal : signals )
   {
     exit_condition.set(false);
