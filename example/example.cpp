@@ -8,6 +8,9 @@
 #include <vector>
 
 
+namespace {
+
+
 void Worker(const sgnl::AtomicCondition<bool>& exit_condition)
 {
   while( !exit_condition.get() )
@@ -17,6 +20,10 @@ void Worker(const sgnl::AtomicCondition<bool>& exit_condition)
     exit_condition.wait_for_value(true, std::chrono::minutes(1));
   }
 }
+
+
+}
+
 
 int main()
 {
