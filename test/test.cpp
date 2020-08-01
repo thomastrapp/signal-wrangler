@@ -337,7 +337,6 @@ TEST_CASE("sleeping-workers-with-exit-condition")
 
 TEST_CASE("looping-workers-with-exit-condition")
 {
-  std::atomic last_signal(0);
   sgnl::AtomicCondition exit_condition(false);
   std::initializer_list signals({SIGINT, SIGTERM, SIGUSR1, SIGUSR2});
   for( auto test_signal : signals )
