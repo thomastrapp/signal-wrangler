@@ -42,7 +42,8 @@ public:
 
     for( int signum : signals )
       if( sigaddset(&this->set_, signum) != 0 )
-        throw SignalHandlerException("sigaddset error");
+        throw SignalHandlerException(
+            "sigaddset: invalid signal " + std::to_string(signum));
 
     int s = pthread_sigmask(SIG_BLOCK, &this->set_, nullptr);
     if( s != 0 )
