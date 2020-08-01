@@ -1,10 +1,14 @@
 on: [push, pull_request]
 jobs:
   build:
+    strategy:
+      matrix:
+        compiler: [g++, clang++]
+    name: Build and run tests (${{ matrix.compiler }})
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     env:
-      CXX: g++
+      CXX: ${{ matrix.compiler }}
     steps:
     - uses: actions/checkout@v2
     - uses: actions/checkout@v2
