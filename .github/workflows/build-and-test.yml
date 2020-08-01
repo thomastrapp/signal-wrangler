@@ -4,7 +4,8 @@ jobs:
     strategy:
       matrix:
         compiler: [g++, clang++]
-    name: Build and run tests (${{ matrix.compiler }})
+        build_type: [Release, Debug]
+    name: Build and run tests (${{ matrix.compiler }}, ${{ matrix.build_type }})
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     env:
@@ -28,7 +29,7 @@ jobs:
       run: >
         mkdir -p build
         && cd build
-        && cmake ..
+        && cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..
         && make
     - name: Build Test
       run: cd build && make sgnl-test
