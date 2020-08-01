@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <unistd.h>
 
 
 void Worker(const sgnl::AtomicCondition<bool>& exit_condition)
@@ -53,10 +54,10 @@ int main()
 
   // SIGUSR1
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  kill(0, SIGUSR1);
+  kill(getpid(), SIGUSR1);
 
   // SIGTERM
-  kill(0, SIGTERM);
+  kill(getpid(), SIGTERM);
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   for(auto& future : futures)

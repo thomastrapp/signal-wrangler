@@ -11,6 +11,7 @@
 
 #include <chrono>
 #include <future>
+#include <unistd.h>
 #include <vector>
 
 
@@ -163,14 +164,22 @@ TEST_CASE("wait-until-predicate")
 {
   sgnl::AtomicCondition condition(23);
   auto pred = [&condition](){ return condition.get() == 42; };
+
+  sgnl::AtomicCondition<bool> fence(false);
+
   std::future<void> future =
     std::async(
         std::launch::async,
-        [&condition, &pred](){
+        [&condition, &pred, &fence](){
+          auto duration = std::chrono::system_clock::now()
+                          + std::chrono::hours(1);
+          fence.set_and_notify_all(true);
           condition.wait_until(
-              std::chrono::system_clock::now() + std::chrono::hours(1),
+              duration,
               pred); });
 
+  fence.wait_value(true);
+  REQUIRE( fence.get() == true );
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   std::this_thread::yield();
 
@@ -208,7 +217,7 @@ TEST_CASE("wait-until-value")
 TEST_CASE("sigwait")
 {
   sgnl::SignalHandler signal_handler({SIGUSR1});
-  kill(0, SIGUSR1);
+  kill(getpid(), SIGUSR1);
   REQUIRE( signal_handler.sigwait() == SIGUSR1 );
 }
 
@@ -218,7 +227,7 @@ TEST_CASE("sigwait_handler")
     return true;
   };
   sgnl::SignalHandler signal_handler({SIGUSR2});
-  kill(0, SIGUSR2);
+  kill(getpid(), SIGUSR2);
   REQUIRE( signal_handler.sigwait_handler(handler) == SIGUSR2 );
 }
 
@@ -231,7 +240,7 @@ TEST_CASE("async_sigwait_handler")
   };
 
   auto future = signal_handler.async_sigwait_handler(handler);
-  kill(0, SIGUSR1);
+  kill(getpid(), SIGUSR1);
   REQUIRE( future.get() == SIGUSR1 );
 }
 
@@ -248,7 +257,7 @@ TEST_CASE("async_sigwait_handler-condition")
   };
 
   auto future = signal_handler.async_sigwait_handler(handler);
-  kill(0, SIGUSR1);
+  kill(getpid(), SIGUSR1);
   REQUIRE( future.get() == SIGUSR1 );
   REQUIRE( condition.get() == SIGUSR1 );
 }
@@ -273,13 +282,13 @@ TEST_CASE("constructor-thread-blocks-signals")
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   std::this_thread::yield();
 
-  REQUIRE( kill(0, SIGTERM) == 0 );
+  REQUIRE( kill(getpid(), SIGTERM) == 0 );
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   std::this_thread::yield();
   CHECK( last_signal.load() == SIGTERM );
 
-  REQUIRE( kill(0, SIGINT) == 0 );
+  REQUIRE( kill(getpid(), SIGINT) == 0 );
 
   REQUIRE( ft_sig_handler.get() == SIGINT );
   REQUIRE( last_signal.load() == SIGINT );
@@ -317,7 +326,7 @@ TEST_CASE("sleeping-workers-with-exit-condition")
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     std::this_thread::yield();
 
-    REQUIRE( kill(0, test_signal) == 0 );
+    REQUIRE( kill(getpid(), test_signal) == 0 );
 
     for(auto& future : futures)
       REQUIRE(future.get() == true);
@@ -359,7 +368,7 @@ TEST_CASE("looping-workers-with-exit-condition")
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     std::this_thread::yield();
 
-    REQUIRE( kill(0, test_signal) == 0 );
+    REQUIRE( kill(getpid(), test_signal) == 0 );
 
     for(auto& future : futures)
       // After 100 milliseconds, each worker thread should
