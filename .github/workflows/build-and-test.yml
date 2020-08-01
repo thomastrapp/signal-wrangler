@@ -33,7 +33,7 @@ jobs:
     - name: Build Test
       run: cd build && make sgnl-test
     - name: Run Test
-      run: ./build/test/sgnl-test -s
+      run: ./build/test/sgnl-test
     - name: Build example
       run: >
         cd build
