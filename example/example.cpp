@@ -2,8 +2,10 @@
 #include <sgnl/SignalHandler.h>
 
 #include <cstdlib>
+#include <future>
 #include <iostream>
 #include <unistd.h>
+#include <vector>
 
 
 void Worker(const sgnl::AtomicCondition<bool>& exit_condition)
