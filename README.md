@@ -134,3 +134,12 @@ make example && ./example
 make install
 ```
 
+## Using signal-wrangler with CMake
+
+Install signal-wrangler by running `make install` (See above).
+To use signal-wrangler in a CMake project, you can then add a dependency on signal-wrangler through CMake's `find_package`:
+
+```CMAKE
+find_package(Sgnl REQUIRED)
+target_link_libraries(my-project sgnl::sgnl ...)
+```
