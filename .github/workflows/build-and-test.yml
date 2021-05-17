@@ -15,6 +15,7 @@ jobs:
     - uses: actions/checkout@v2
       with:
         repository: catchorg/Catch2
+        ref: v2.x
         path: catch
     - name: Install catch
       working-directory: catch
