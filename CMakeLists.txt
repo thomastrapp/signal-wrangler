@@ -1,6 +1,16 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 project(signal-wrangler VERSION 0.3.0)
 
+# Toplevel or subproject:
+if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    set(SGNL_IS_TOPLEVEL_PROJECT TRUE)
+else()
+    set(SGNL_IS_TOPLEVEL_PROJECT FALSE)
+endif()
+
+# If toplevel project, enable building and performing of tests:
+option(SGNL_OPT_BUILD_TESTS "Build and perform sgnl tests" ${SGNL_IS_TOPLEVEL_PROJECT})
+
 # Add the top-level cmake module directory to CMAKE_MODULE_PATH
 list(INSERT CMAKE_MODULE_PATH 0 ${PROJECT_SOURCE_DIR}/cmake)
 
@@ -40,7 +50,9 @@ install(EXPORT SgnlTargets
         NAMESPACE sgnl::
         DESTINATION lib/cmake/sgnl)
 
-add_subdirectory("test")
+if (SGNL_OPT_BUILD_TESTS)
+  add_subdirectory("test")
+endif ()
 
 add_executable(example EXCLUDE_FROM_ALL "example/example.cpp")
 target_link_libraries(example sgnl::sgnl)
