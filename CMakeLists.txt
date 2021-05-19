@@ -40,7 +40,7 @@ install(EXPORT SgnlTargets
         NAMESPACE sgnl::
         DESTINATION lib/cmake/sgnl)
 
-add_subdirectory("test")
+add_subdirectory("test" EXCLUDE_FROM_ALL)
 
 add_executable(example EXCLUDE_FROM_ALL "example/example.cpp")
 target_link_libraries(example sgnl::sgnl)
