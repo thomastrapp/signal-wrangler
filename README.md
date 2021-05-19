@@ -136,8 +136,25 @@ make install
 
 ## Using signal-wrangler with CMake
 
-Install signal-wrangler by running `make install` (See above).
-To use signal-wrangler in a CMake project, you can then add a dependency on signal-wrangler through CMake's `find_package`:
+The easiest way to add signal-wrangler to a CMake project is by using
+[FetchContent](https://cmake.org/cmake/help/latest/module/FetchContent.html):
+
+```CMAKE
+cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+project(my-example)
+
+include(FetchContent)
+FetchContent_Declare(
+  signal-wrangler
+  GIT_REPOSITORY https://github.com/thomastrapp/signal-wrangler
+  GIT_TAG v0.4.0)
+FetchContent_MakeAvailable(signal-wrangler)
+
+add_executable(my-example "example/example.cpp")
+target_link_libraries(my-example sgnl::sgnl)
+```
+
+Or, by installing signal-wrangler (`make install`) and using `find_package`:
 
 ```CMAKE
 find_package(Sgnl REQUIRED)
